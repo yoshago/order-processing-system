@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -32,5 +33,26 @@ func InitRoutes(r *gin.Engine, database *gorm.DB) {
 			return
 		}
 		c.JSON(http.StatusOK, order)
+	})
+
+	// Endpoint to list all orders with pagination
+	r.GET("/orders", func(c *gin.Context) {
+		var orders []models.Order
+		page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+		if err != nil || page < 1 {
+			page = 1
+		}
+		pageSize, err := strconv.Atoi(c.DefaultQuery("page_size", "10"))
+		if err != nil || pageSize < 1 {
+			pageSize = 10
+		}
+
+		offset := (page - 1) * pageSize
+		if err := database.Limit(pageSize).Offset(offset).Find(&orders).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve orders"})
+			return
+		}
+
+		c.JSON(http.StatusOK, orders)
 	})
 }
