@@ -7,10 +7,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/yoshago/order-processing-system/internal/models"
+	"github.com/yoshago/order-processing-system/internal/processor"
 	"gorm.io/gorm"
 )
 
-func InitRoutes(r *gin.Engine, database *gorm.DB) {
+func InitRoutes(r *gin.Engine, database *gorm.DB, workerPool *processor.WorkerPool) {
 	r.POST("/orders", func(c *gin.Context) {
 		var newOrder models.Order
 		if err := c.ShouldBindJSON(&newOrder); err != nil {
@@ -23,6 +24,10 @@ func InitRoutes(r *gin.Engine, database *gorm.DB) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create order"})
 			return
 		}
+
+		// Add order to the worker pool for processing
+		workerPool.AddOrder(newOrder)
+
 		c.JSON(http.StatusCreated, newOrder)
 	})
 
