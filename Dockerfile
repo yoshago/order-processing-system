@@ -1,20 +1,21 @@
 # Use the official Golang image as the base image
-FROM golang:1.20 as builder
+FROM golang:1.20 AS builder
 
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy go.mod and go.sum files to the workspace
+# Copy the source code into the container
+COPY cmd cmd
+COPY internal internal
+
+# Copy go.mod and go.sum files
 COPY go.mod go.sum ./
 
 # Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
-RUN go mod download
-
-# Copy the source code into the container
-COPY . .
+RUN go mod tidy && go get ./...
 
 # Build the Go application
-RUN go build -o main .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main ./cmd/server
 
 # Use a minimal image as the base image for the final container
 FROM alpine:latest
@@ -32,4 +33,4 @@ COPY .env .
 RUN apk add --no-cache postgresql-client
 
 # Command to run the executable
-CMD ["./main"]
+CMD ["/root/main"]
